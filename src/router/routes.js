@@ -23,6 +23,24 @@ const routes = [
         component: () => import("src/pages/EdssForm.vue"),
         meta: { requiresAuth: true },
       },
+      {
+        name: "calendar",
+        path: "/calendar",
+        component: () => import("src/pages/CalendarPage.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
+        name: "calendar2",
+        path: "/calendar2",
+        component: () => import("src/pages/CalendarPageTwo.vue"),
+        meta: { requiresAuth: true },
+      },
+      {
+        name: "test",
+        path: "/test",
+        component: () => import("src/pages/TestPage.vue"),
+        meta: { requiresAuth: true },
+      },
     ],
   },
   {

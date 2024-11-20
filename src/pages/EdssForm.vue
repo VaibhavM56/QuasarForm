@@ -11,9 +11,6 @@
             </div>
           </div>
         </div>
-        <!-- <PageHeader
-          title="EDSS 300: Introduction to Teaching Field Work Evaluation Form"
-        /> -->
       </div>
       <div class="col-4 items-end column q-mt-md">
         <q-btn @click="onSubmit">Submit</q-btn>
@@ -32,97 +29,39 @@
 
     <q-form>
       <div
-        v-for="item in formStore.schema[0].input[0].fields"
+        v-for="item in formStore.schema[0].form.fields"
         :key="item.name"
         class="q-ma-md"
       >
-        <!-- <BaseLabel :label="item.label" /> -->
-        <div class="text-subtitle1">
-          {{ item.label }}
-          <span v-if="item.required" style="color: red">*</span>
-        </div>
-        <q-input
-          v-model="
-            formStore.schema[0].formData[0].fields.find(
-              (field) => field.name === item.name
-            ).value
-          "
-          :required="item.required"
+        <InputComp
+          :label="item.label"
+          :modelValue="formStore.schema[0].form.fields[item.id - 1].value"
           :type="item.type"
-          outlined
+          :outlined="true"
           :rules="[(value) => validateField(value, item.rules)]"
-          class="form-input"
-          :error="
-            !!formStore.schema[0].formData[0].fields.find(
-              (field) => field.name === item.name
-            ).error
-          "
-          :error-message="
-            formStore.schema[0].formData[0].fields.find(
-              (field) => field.name === item.name
-            ).error
-          "
+          :required="item.required"
+          @update:modelValue="(value) => updateFieldValue(item.id - 1, value)"
         />
       </div>
+
       <div
         class="q-ma-md"
-        v-for="(tableItems, tableIndex) in formStore.schema[0].input[0].tables"
+        v-for="(tableItems, tableIndex) in formStore.schema[0].form.tables"
         :key="tableItems.name"
       >
-        <q-table
+        <TableComp
           flat
           :title="tableItems.label"
           :rows="tableItems.rows"
           :columns="tableItems.columns"
-          separator="none"
-          row-key="id"
-          hide-bottom
+          :row-key="tableItems.id"
           class="table-class"
           :rows-per-page-options="[0]"
-        >
-          <template v-slot:body-cell-criteria="props">
-            <div class="text-subtitle1 q-ma-md" :style="{ width: '300px' }">
-              {{ props.row.criteria }}
-              <span v-if="props.row.required" style="color: red">*</span>
-            </div>
-            <div
-              class="text-caption text-red-13 q-ml-md q-mb-md"
-              v-if="
-                onShow === true &&
-                !formStore.schema[0].formData[0].tables.find(
-                  (table) => table.name === tableItems.name
-                ).table_values[props.rowIndex].value
-              "
-            >
-              Field is required *
-            </div>
-          </template>
-
-          <template v-slot:body-cell="props">
-            <q-td :props="props" no-hover>
-              <div v-if="props.col.name !== 'criteria'" class="q-ma-xs">
-                <q-radio
-                  v-model="
-                    formStore.schema[0].formData[0].tables[
-                      tableIndex
-                    ].table_values.find(
-                      (row) => row.criteria === props.row.criteria
-                    ).value
-                  "
-                  :val="props.col.name"
-                  dense
-                  @update:model-value="
-                    updateTableValue(
-                      tableIndex,
-                      props.row.criteria,
-                      props.col.name
-                    )
-                  "
-                />
-              </div>
-            </q-td>
-          </template>
-        </q-table>
+          hide-bottom
+          :formData="formStore.schema[0].form.tables[tableIndex].rows"
+          @request="handleTableRequest"
+          separator="none"
+        />
       </div>
 
       <div class="q-ma-lg">
@@ -150,7 +89,7 @@
           <q-input
             type="textarea"
             filled
-            v-model="formStore.schema[0].formData[0].comments"
+            v-model="formStore.schema[0].form.comments"
           />
         </div>
       </div>
@@ -176,8 +115,9 @@ import { onBeforeMount, ref, watch } from "vue";
 import { useFormStore } from "src/stores/form";
 import pdfMake from "pdfmake/build/pdfmake";
 import pdfFonts from "pdfmake/build/vfs_fonts";
-
-pdfMake.vfs = pdfFonts.pdfMake.vfs;
+import InputComp from "src/components/InputComp.vue";
+import TableComp from "src/components/TableComp.vue";
+import { useValidateField } from "src/composables/validate";
 
 const formStore = useFormStore();
 const onShow = ref(false);
@@ -185,23 +125,36 @@ const file = ref(null);
 const base64String = ref("");
 const fileError = ref("");
 const formIsValid = ref(true);
+const { validateField } = useValidateField();
 
 onBeforeMount(() => {
-  formStore.populateTableValues();
-  console.log(formStore.schema);
+  console.log(formStore.schema[0].form);
 });
 
-const onSubmit = () => {
-  formIsValid.value = true;
+const handleTableRequest = (updatedTableData) => {
+  formStore.schema[0].form.tables.forEach((table) => {
+    const tableIndex = formStore.schema[0].form.tables.indexOf(table);
+    if (tableIndex !== -1) {
+      formStore.schema[0].form.tables[tableIndex].table_values =
+        updatedTableData;
+    }
+  });
+};
 
-  formStore.schema[0].input[0].fields.forEach((item) => {
-    const field = formStore.schema[0].formData[0].fields.find(
-      (field) => field.name === item.name
-    );
+const updateFieldValue = (index, value) => {
+  formStore.schema[0].form.fields[index].value = value;
+};
+
+const validateFields = () => {
+  formIsValid.value = true;
+  fileError.value = "";
+
+  formStore.schema[0].form.fields.forEach((item) => {
+    const field = formStore.schema[0].form.fields[item.id - 1];
 
     if (item.required && !field.value) {
-      formIsValid.value = false;
       field.error = "Field is required";
+      formIsValid.value = false;
     } else if (item.rules) {
       const validationMessage = validateField(field.value, item.rules);
       if (validationMessage !== true) {
@@ -214,95 +167,80 @@ const onSubmit = () => {
       field.error = "";
     }
   });
+};
 
-  formStore.schema[0].input[0].tables.forEach((table, tableIndex) => {
+const validateTables = () => {
+  formStore.schema[0].form.tables.forEach((table, tableIndex) => {
     table.rows.forEach((row, rowIndex) => {
       const tableValue =
-        formStore.schema[0].formData[0].tables[tableIndex].table_values[
-          rowIndex
-        ].value;
+        formStore.schema[0].form.tables[tableIndex].rows[rowIndex].value;
 
       if (row.required && !tableValue) {
         formIsValid.value = false;
       }
     });
   });
+};
+
+const onSubmit = () => {
+  console.log("Submitting form...");
+
+  validateFields();
+  validateTables();
+
+  console.log("File:", file.value);
+  console.log("Form validity:", formIsValid.value);
 
   if (!file.value) {
     formIsValid.value = false;
     fileError.value = "File upload is required";
-    // console.log("File upload is invalid");
-  } else {
-    fileError.value = "";
   }
+
+  if (!formIsValid.value) {
+    onShow.value = false;
+    console.log("Form is invalid. Not submitting.");
+    return;
+  }
+
+  // Log to ensure this code is reached
+  console.log("Form is valid. Setting onShow to true.");
 
   onShow.value = true;
-
-  if (formIsValid.value) {
-    console.log("Form Submitted:", formStore.schema[0].formData[0]);
-    generatePDF();
-  } else {
-    console.log("Form is invalid. Not submitting.");
-  }
+  console.log("Form Submitted:", formStore.schema[0].form);
+  generatePDF();
 };
 
-formStore.schema[0].formData[0].fields.forEach((field) => {
-  watch(
-    () => field.value,
-    (newValue) => {
-      const fieldSchema = formStore.schema[0].input[0].fields.find(
-        (item) => item.name === field.name
-      );
+// formStore.schema[0].form.fields.forEach((field) => {
+//   watch(
+//     () => field.value,
+//     (newValue) => {
+//       const fieldSchema = formStore.schema[0].form.fields.find(
+//         (item) => item.name === field.name
+//       );
 
-      if (fieldSchema && fieldSchema.rules) {
-        const validationMessage = validateField(newValue, fieldSchema.rules);
+//       if (fieldSchema && fieldSchema.rules) {
+//         const validationMessage = validateField(newValue, fieldSchema.rules);
 
-        if (validationMessage !== true) {
-          field.error = validationMessage;
-          formIsValid.value = false;
-        } else {
-          field.error = "";
-          formIsValid.value = true;
-        }
-      }
-    }
-  );
-});
+//         if (validationMessage !== true) {
+//           field.error = validationMessage;
+//           formIsValid.value = false;
+//         } else {
+//           field.error = "";
+//           formIsValid.value = true;
+//         }
+//       }
+//     }
+//   );
+// });
 
-watch(
-  () => file.value,
-  (newFile) => {
-    if (fileError.value && newFile) {
-      fileError.value = "";
-    }
-  }
-);
-
-function validateField(value, rule) {
-  switch (rule) {
-    case "name":
-      return validateName(value);
-    case "hours":
-      return validateHours(value);
-    case "csulbid":
-      return validateCSULBID(value);
-    default:
-      return true;
-  }
-}
-
-function validateName(value) {
-  return (value && value.trim().length > 0) || "Field is required";
-}
-
-function validateHours(value) {
-  const hours = parseFloat(value);
-  return (!isNaN(hours) && hours > 0) || "Please enter a valid number of hours";
-}
-
-function validateCSULBID(value) {
-  return /^[0-9]{8}$/.test(value) || "CSULB ID must be exactly 8 digits";
-}
+// watch(
+//   () => file.value,
+//   (newFile) => {
+//     if (fileError.value && newFile) {
+//       fileError.value = "";
+//     }
+//   }
+// );
 
 const handleFileUpload = (event) => {
   const file = event.target.files[0];
@@ -311,7 +249,7 @@ const handleFileUpload = (event) => {
   reader.readAsDataURL(file);
   reader.onload = () => {
     base64String.value = reader.result;
-    formStore.schema[0].formData[0].fileUpload = base64String.value;
+    formStore.schema[0].form.fileUpload = base64String.value;
     // console.log(formStore.schema[0].formData[0].fileUpload);
   };
 };
@@ -326,15 +264,7 @@ const downloadFile = () => {
   console.log(link);
 };
 
-const updateTableValue = (tableIndex, criteria, value) => {
-  const tableValue = formStore.schema[0].formData[0].tables[
-    tableIndex
-  ].table_values.find((row) => row.criteria === criteria);
-  if (tableValue) {
-    tableValue.value = value;
-  }
-};
-
+pdfMake.vfs = pdfFonts.pdfMake.vfs;
 const generatePDF = () => {
   const candidateInfo = formStore.schema[0].input[0].fields.map((field) => {
     const value =

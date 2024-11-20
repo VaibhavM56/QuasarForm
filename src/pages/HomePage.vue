@@ -1,5 +1,5 @@
 <template>
-  <div class="q-ma-lg" v-if="show">
+  <div class="q-ma-lg">
     <q-table
       class="input-table"
       :columns="columns"
@@ -10,14 +10,6 @@
       hide-bottom
       wrap-cells
     >
-      <!-- <template v-slot:body-cell-description="props">
-        <q-tr :props="props" class="table-description">
-          <div class="text-caption q-ma-md" :style="{ width: '600px' }">
-            {{ props.row.description }}
-          </div>
-        </q-tr>
-        <q-separator></q-separator>
-      </template> -->
       <template #body="props">
         <q-tr no-hover :props="props">
           <q-td key="name" no-hover :props="props" :style="{ width: '400px' }">
@@ -43,7 +35,9 @@
         </q-tr>
       </template>
     </q-table>
+    <!-- <TableComp :rows="rows" :columns="columns" bordered wrap-cells /> -->
     <!-- <pre>{{ rows }}</pre> -->
+    <q-btn label="view details"></q-btn>
   </div>
 </template>
 
@@ -51,10 +45,10 @@
 import { useQuasar } from "quasar";
 import { useAuthStore } from "src/stores/Auth";
 import { onBeforeMount, onMounted, ref } from "vue";
+import TableComp from "src/components/TableComp.vue";
 
 const $q = useQuasar();
 const authStore = useAuthStore();
-const show = ref(false);
 
 const columns = [
   {
@@ -89,16 +83,16 @@ const columns = [
 
 const rows = ref([]);
 
-const showLoading = () => {
-  $q.loading.show();
+// const showLoading = () => {
+//   $q.loading.show();
 
-  // hiding in 2s
-  setTimeout(() => {
-    $q.loading.hide();
-    fetchData();
-    show.value = !show.value;
-  }, 5000);
-};
+//   // hiding in 2s
+//   setTimeout(() => {
+//     $q.loading.hide();
+//     fetchData();
+//     show.value = !show.value;
+//   }, 5000);
+// };
 
 const fetchData = async () => {
   try {
@@ -120,7 +114,7 @@ const fetchData = async () => {
   }
 };
 
-onMounted(showLoading);
+onMounted(fetchData);
 </script>
 
 <style scoped>

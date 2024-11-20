@@ -13,13 +13,17 @@
     "build": "quasar build"
   },
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
     "@quasar/extras": "^1.16.4",
     "axios": "^1.2.1",
     "lodash": "^4.17.21",
     "pdfmake": "^0.2.12",
     "pinia": "^2.0.11",
+    "qalendar": "^3.8.1",
     "quasar": "^2.16.0",
+    "v-calendar": "^3.1.2",
     "vue": "^3.4.18",
+    "vue-cal": "^4.9.0",
     "vue-router": "^4.0.12"
   },
   "devDependencies": {
